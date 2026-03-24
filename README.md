@@ -24,12 +24,7 @@ AutoDumper is a Lua-based automation mod for UE4SS that sequentially runs built-
 1. Navigate to your game's Mods folder: <Game>\Binaries\Win64\Mods\
 2. Copy the `AutoDumper` folder into the existing `Mods` directory.
 Final structure should look like:
-Mods/
-├── AutoDumper/
-│ └── scripts/
-│ ├── main.lua
-│ ├── config.lua
-│ └── dumper_pipeline.lua
+Mods/ AutoDumper/ scripts/ main.lua , config.lua , dumper_pipeline.lua
 3. Open (or create) `Mods/mods.txt`
-4. Add this line: AutoDumper : 1
+4. Add this line: " AutoDumper : 1 " -- Make sure this stays above the " ; Built in Keybinds.. "
 5. Save and launch the game.
