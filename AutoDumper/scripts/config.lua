@@ -1,3 +1,10 @@
+-- true = run
+-- false = skip
+-- Make sure to changes these depending on what dumps you want ran!!!
+--   Default is set to have all 6 set to true! 
+
+
+
 AutoDumperConfig = {
     INITIAL_DELAY_MS = 15000,
     POLL_INTERVAL_MS = 2000,
