@@ -1,0 +1,14 @@
+# Logs
+*.log
+
+# Dump outputs
+*.txt
+*.csv
+*.usmap
+
+# UE4SS output folders
+UE4SS/
+
+# OS junk
+.DS_Store
+Thumbs.db
