@@ -1,74 +1,178 @@
-# UE4SS AutoDumper
+# UE4SS-AutoDumper (V2 – Blocking Pipeline)
 
-AutoDumper is a Lua-based automation mod for UE4SS that sequentially runs built-in dumpers and advances only after detecting completion via UE4SS.log.
+AutoDumper is a UE4SS Lua-based automation tool designed to execute multiple dumpers in a clean, sequential pipeline.
 
-## Features
+Version 2 uses the blocking execution model built into UE4SS dumpers, eliminating the need for log parsing, polling, and completion detection.
 
-- Fully automated dumper execution
-- Config-driven dumper selection
-- Sequential pipeline (no overlap)
-- Log-based completion detection
-- No UI or keybind interaction required
+---
 
-## Supported Dumpers
+## ⚡ Features
 
-- SDK Generator
-- Object Dump
-- UHT Compatible Headers
-- Static Mesh Dump
-- Actor Dump
-- USMAP Generator
+- Fully automated dumper execution  
+- Config-driven dumper selection  
+- Sequential pipeline (no overlap)  
+- Clean, structured logging system  
+- Separate AutoDumper log file (no UE4SS noise)  
+- Automatic log reset each run  
+- No UI or keybind interaction required  
 
-## Installation
+---
 
-1. Navigate to your game's Mods folder: <Game>\Binaries\Win64\Mods\
-2. Copy the `AutoDumper` folder into the existing `Mods` directory.
-Final structure should look like:
-Mods/ AutoDumper/ scripts/ main.lua , config.lua , dumper_pipeline.lua
-3. Open (or create) `Mods/mods.txt`
-4. Add this line: " AutoDumper : 1 " -- Make sure this stays above the " ; Built in Keybinds.. "
-5. Save and launch the game.
+## 🧩 Supported Dumpers
 
-## Configuration
+- SDK Generator  
+- Object Dump  
+- UHT Compatible Headers  
+- Static Mesh Dump  
+- Actor Dump  
+- USMAP Generator  
 
-Before launching the game, open: AutoDumper/scripts/config.lua
- Inside 'config.lua' enable or disable the dumpers you want to run
- true = run
- false = skip
+---
 
-## How It Works
+## 📦 Installation
 
-Builds a queue of enabled dumpers
-Runs each dumper in sequence
-Monitors UE4SS.log for completion phrases
-Automatically advances to the next dumper
+1. Navigate to your game’s Mods folder:
 
-## Notes (V1)
+```
+<Game>\Binaries\Win64\Mods\
+```
 
-Reads the full UE4SS.log for completion detection
-Old log entries may trigger false positives
-!!~~ Best used with a fresh session/log ~~!!
+If you don't see a `Mods` folder, create one.
 
-## Roadmap
+---
 
-V2
-Ignore old log entries
-Cleaner logging output
-Optional per-dumper delays
+2. Copy the `AutoDumper` folder into the Mods directory.
 
-V3
-User-friendly config (no Lua editing)
-Auto-close game after completion
-Output organization
-Zip/package dump results
-Status summary
+Your structure should look like:
 
-## Credits
+```text
+Mods/
+  AutoDumper/
+    scripts/
+      main.lua
+      config.lua
+      dumper_pipeline.lua
+```
 
-- UE4SS Team — for creating and maintaining the UE4SS framework that makes this tool possible  
+---
+
+3. Open (or create if needed):
+
+```
+<Game>\Binaries\Win64\Mods\mods.txt
+```
+
+Add the following line, then save:
+
+```
+AutoDumper : 1
+```
+
+Make sure this is above:
+
+```
+; Built in Keybinds
+```
+
+Then follow the Configuration section below.
+
+---
+
+## ⚙️ Configuration
+
+Before launching the game, open:
+
+```
+AutoDumper/scripts/config.lua
+```
+
+Inside `config.lua`, enable or disable dumpers:
+
+```lua
+true  = run
+false = skip
+```
+
+---
+
+## 🧠 How It Works
+
+AutoDumper leverages the fact that UE4SS dumpers are **blocking operations**.
+
+This means:
+
+- Each dumper completes before the next begins  
+- No need for polling or log-based completion detection  
+
+Execution flow:
+
+```text
+SDK → Objects → UHT → Static Meshes → Actors → USMAP
+```
+
+---
+
+## 📂 Logging
+
+AutoDumper generates a clean log file in the UE4SS working directory:
+
+```
+ReadyOrNot/Binaries/Win64/AutoDumper.log
+```
+
+This is the same location as `UE4SS.log`.
+
+- Overwritten each run  
+- Timestamped entries  
+- Step-based structure  
+
+Example:
+
+```text
+==================================================
+[11:33:38] STEP 2: Running SDK Dumper...
+[11:33:40] SDK Dumper finished.
+==================================================
+```
+
+---
+
+## 🆕 Notes (V2)
+
+Version 2 replaces the log-based pipeline with a blocking execution model.
+
+- Removes polling and timeout systems  
+- Eliminates log parsing complexity  
+- Improves reliability and execution speed  
+
+---
+
+## 🚧 Roadmap
+
+### V2
+- Config cleanup (remove legacy polling settings)  
+- Optional delay between dumpers  
+- Output organization  
+
+### V3
+- User-friendly config (no Lua editing)  
+- Auto-close game after completion  
+- Output organization  
+- Zip/package dump results  
+- Final status summary  
+
+---
+
+## 🙏 Credits
+
+- UE4SS Team — for creating and maintaining the UE4SS framework  
 - AutoDumper — built as an automation layer on top of UE4SS dumpers  
 
-## Author
-DFAsniper
+---
 
-~~ This project does not modify or replace UE4SS functionality. It simply automates the use of its existing features. ~~
+## 👤 Author
+
+**DFAsniper**
+
+> Built to eliminate unnecessary complexity and let the engine do the work.  
+> This project does not modify or replace UE4SS functionality — it automates its existing features.

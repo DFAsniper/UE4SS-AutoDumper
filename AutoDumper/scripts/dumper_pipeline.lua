@@ -1,4 +1,4 @@
-print("[AutoDumper] dumper_pipeline.lua loaded")
+print("[AutoDumper] dumper_pipeline.lua (V2) loaded")
 
 local ok, err = pcall(function()
     dofile("Mods/AutoDumper/scripts/config.lua")
@@ -16,166 +16,141 @@ end
 
 local CONFIG = AutoDumperConfig
 
-local LOG_PATH = "UE4SS.log"
-local queue = {}
-local currentIndex = 1
-local pipelineStarted = false
+-- =========================
+-- Logging System (V2.1)
+-- =========================
 
-local function SafePrint(msg)
-    print("[AutoDumper] " .. tostring(msg))
-end
+local LOG_FILE = "AutoDumper.log"
 
-local function ReadEntireFile(path)
-    local file = io.open(path, "r")
-    if not file then
-        return nil
-    end
+-- wipe old log on start
+local file = io.open(LOG_FILE, "w")
+if file then file:close() end
 
-    local content = file:read("*a")
-    file:close()
-    return content
-end
-
-local function LogContains(text)
-    local content = ReadEntireFile(LOG_PATH)
-    if not content then
-        return false
-    end
-
-    return string.find(content, text, 1, true) ~= nil
-end
-
-local function BuildQueue()
-    local dumpers = {
-        {
-            key = "SDK",
-            name = "SDK",
-            done_text = "SDK generated in",
-            run = function()
-                SafePrint("Starting SDK generation...")
-                GenerateSDK()
-                SafePrint("GenerateSDK() called")
-            end
-        },
-        {
-            key = "OBJECTS",
-            name = "Objects",
-            done_text = "Dumping GUObjectArray took",
-            run = function()
-                SafePrint("Starting object dump...")
-                DumpAllObjects()
-                SafePrint("DumpAllObjects() called")
-            end
-        },
-        {
-            key = "UHT",
-            name = "UHT",
-            done_text = "Generating UHT compatible headers took",
-            run = function()
-                SafePrint("Starting UHT generation...")
-                GenerateUHTCompatibleHeaders()
-                SafePrint("GenerateUHTCompatibleHeaders() called")
-            end
-        },
-        {
-            key = "STATIC_MESHES",
-            name = "Static Meshes",
-            done_text = "Finished dumping CSV of all loaded static mesh actors, positions and mesh properties",
-            run = function()
-                SafePrint("Starting static meshes dump...")
-                DumpStaticMeshes()
-                SafePrint("DumpStaticMeshes() called")
-            end
-        },
-        {
-            key = "ACTORS",
-            name = "Actors",
-            done_text = "Finished dumping CSV of all loaded actor types, positions and mesh properties",
-            run = function()
-                SafePrint("Starting actor dump...")
-                DumpAllActors()
-                SafePrint("DumpAllActors() called")
-            end
-        },
-        {
-            key = "USMAP",
-            name = "USMAP",
-            done_text = "Mappings Generation Completed Successfully!",
-            run = function()
-                SafePrint("Starting USMAP generation...")
-                DumpUSMAP()
-                SafePrint("DumpUSMAP() called")
-            end
-        }
-    }
-
-    for _, dumper in ipairs(dumpers) do
-        local cfg = CONFIG.DUMPERS[dumper.key]
-        if cfg and cfg.ENABLED then
-            table.insert(queue, {
-                key = dumper.key,
-                name = dumper.name,
-                done_text = dumper.done_text,
-                run = dumper.run,
-                timeout_ms = cfg.TIMEOUT_MS or CONFIG.DEFAULT_TIMEOUT_MS
-            })
-        end
+local function WriteLog(msg)
+    local file = io.open(LOG_FILE, "a")
+    if file then
+        file:write(msg .. "\n")
+        file:close()
     end
 end
 
-local function StartNextDumper()
-    local dumper = queue[currentIndex]
-
-    if not dumper then
-        SafePrint("Pipeline complete. No more dumpers to run.")
-        return
-    end
-
-    SafePrint("Running dumper " .. currentIndex .. "/" .. #queue .. ": " .. dumper.name)
-
-    local startTime = os.clock()
-    dumper.run()
-
-    local function PollForCompletion()
-        local elapsedMs = math.floor((os.clock() - startTime) * 1000)
-
-        if LogContains(dumper.done_text) then
-            SafePrint(dumper.name .. " finished. Detected completion text: " .. dumper.done_text)
-            currentIndex = currentIndex + 1
-            ExecuteWithDelay(CONFIG.POLL_INTERVAL_MS, StartNextDumper)
-            return
-        end
-
-        if elapsedMs >= dumper.timeout_ms then
-            SafePrint(dumper.name .. " timed out after " .. tostring(dumper.timeout_ms) .. " ms")
-            currentIndex = currentIndex + 1
-            ExecuteWithDelay(CONFIG.POLL_INTERVAL_MS, StartNextDumper)
-            return
-        end
-
-        ExecuteWithDelay(CONFIG.POLL_INTERVAL_MS, PollForCompletion)
-    end
-
-    ExecuteWithDelay(CONFIG.POLL_INTERVAL_MS, PollForCompletion)
+local function GetTime()
+    return os.date("%H:%M:%S")
 end
 
-local function StartPipeline()
-    if pipelineStarted then
-        SafePrint("Pipeline already started, skipping duplicate launch")
-        return
-    end
-
-    pipelineStarted = true
-    BuildQueue()
-
-    if #queue == 0 then
-        SafePrint("No dumpers are enabled in config.lua")
-        return
-    end
-
-    SafePrint("Queue built with " .. tostring(#queue) .. " enabled dumper(s)")
-    StartNextDumper()
+local function Log(msg)
+    local line = "[" .. GetTime() .. "] [AutoDumper] " .. tostring(msg)
+    print(line)
+    WriteLog(line)
 end
 
-SafePrint("Initial delay set to " .. tostring(CONFIG.INITIAL_DELAY_MS) .. " ms")
-ExecuteWithDelay(CONFIG.INITIAL_DELAY_MS, StartPipeline)
+local function PrintDivider()
+    local line = "=================================================="
+    print(line)
+    WriteLog(line)
+end
+
+local step = 1
+
+local function StartStep(msg)
+    PrintDivider()
+    Log("STEP " .. step .. ": " .. msg)
+end
+
+local function EndStep(msg)
+    Log(msg)
+    PrintDivider()
+    step = step + 1
+end
+
+-- =========================
+-- Dumpers (Blocking)
+-- =========================
+
+local function RunSDK()
+    StartStep("Running SDK Dumper...")
+    GenerateSDK()
+    EndStep("SDK Dumper finished.")
+end
+
+local function RunObjects()
+    StartStep("Running Objects Dumper...")
+    DumpAllObjects()
+    EndStep("Objects Dumper finished.")
+end
+
+local function RunUHT()
+    StartStep("Running UHT Dumper...")
+    GenerateUHTCompatibleHeaders()
+    EndStep("UHT Dumper finished.")
+end
+
+local function RunStaticMeshes()
+    StartStep("Running Static Meshes Dumper...")
+    DumpStaticMeshes()
+    EndStep("Static Meshes Dumper finished.")
+end
+
+local function RunActors()
+    StartStep("Running Actors Dumper...")
+    DumpAllActors()
+    EndStep("Actors Dumper finished.")
+end
+
+local function RunUSMAP()
+    StartStep("Running USMAP Dumper...")
+    DumpUSMAP()
+    EndStep("USMAP Dumper finished.")
+end
+
+-- =========================
+-- Main Pipeline
+-- =========================
+
+local function RunPipeline()
+    PrintDivider()
+    Log("STEP " .. step .. ": Starting AutoDumper V2 pipeline...")
+    PrintDivider()
+    step = step + 1
+
+    local dumpers = CONFIG.DUMPERS
+
+    if dumpers.SDK and dumpers.SDK.ENABLED then
+        RunSDK()
+    end
+
+    if dumpers.OBJECTS and dumpers.OBJECTS.ENABLED then
+        RunObjects()
+    end
+
+    if dumpers.UHT and dumpers.UHT.ENABLED then
+        RunUHT()
+    end
+
+    if dumpers.STATIC_MESHES and dumpers.STATIC_MESHES.ENABLED then
+        RunStaticMeshes()
+    end
+
+    if dumpers.ACTORS and dumpers.ACTORS.ENABLED then
+        RunActors()
+    end
+
+    if dumpers.USMAP and dumpers.USMAP.ENABLED then
+        RunUSMAP()
+    end
+
+    PrintDivider()
+    Log("STEP" .. step .. ": All enabled dumpers completed!!")
+    PrintDivider()
+    step = step + 1
+end
+
+-- =========================
+-- Start (keeps your delay)
+-- =========================
+
+Log("Initial delay set to " .. tostring(CONFIG.INITIAL_DELAY_MS) .. " ms")
+
+ExecuteWithDelay(CONFIG.INITIAL_DELAY_MS, function()
+    RunPipeline()
+end)
